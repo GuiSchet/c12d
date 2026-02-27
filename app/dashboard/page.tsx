@@ -2,6 +2,7 @@
 
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { BitcoinDataProvider } from "@/contexts/BitcoinDataContext";
+import { AlertProvider } from "@/contexts/AlertContext";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { ChartContextProvider } from "@/components/ChartContextProvider";
 
@@ -16,11 +17,13 @@ export default function DashboardPage() {
 
       <div className="relative z-10 h-full w-full">
         <BitcoinDataProvider wsUrl={wsUrl}>
-          <ChatProvider>
-            <ChartContextProvider>
-              <DashboardLayout />
-            </ChartContextProvider>
-          </ChatProvider>
+          <AlertProvider>
+            <ChatProvider>
+              <ChartContextProvider>
+                <DashboardLayout />
+              </ChartContextProvider>
+            </ChatProvider>
+          </AlertProvider>
         </BitcoinDataProvider>
       </div>
     </div>
