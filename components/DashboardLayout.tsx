@@ -1,18 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TopicWheel } from "@/components/TopicWheel";
 import { ChartSelector } from "@/components/ChartSelector";
 import { ShadcnChart } from "@/components/ShadcnChart";
 import { LogViewer } from "@/components/LogViewer";
 import { ChatPanel } from "@/components/ChatPanel";
+import { AlertBadge } from "@/components/AlertBadge";
+import { AlertToast } from "@/components/AlertToast";
+import { AlertPanel } from "@/components/AlertPanel";
 import { useChartContext } from "@/components/ChartContextProvider";
 import { useBitcoinData } from "@/contexts/BitcoinDataContext";
+import { useChatContext } from "@/contexts/ChatContext";
+import { METRIC_LABELS, OPERATOR_LABELS } from "@/lib/alertEngine";
 import { TopicId } from "@/types/charts";
+import type { AlertEvent } from "@/types/alerts";
 
 type View = "wheel" | "selector" | "chart";
 
-function LeftPanel() {
+function LeftPanel({ onAlertClick }: { onAlertClick: () => void }) {
   const [view, setView] = useState<View>("wheel");
   const { context, selectTopic, resetSelection, clearChart } = useChartContext();
   const bitcoinData = useBitcoinData();
@@ -46,15 +52,18 @@ function LeftPanel() {
       {/* WebSocket status bar */}
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <span className="text-white/60 text-xs font-mono">peer-observer</span>
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${
-            bitcoinData.wsStatus === "connected"
-              ? "bg-green-400 shadow-[0_0_6px_#4ade80]"
-              : bitcoinData.wsStatus === "connecting"
-              ? "bg-yellow-400 animate-pulse"
-              : "bg-red-400"
-          }`} />
-          <span className="text-white/40 text-xs font-mono capitalize">{bitcoinData.wsStatus}</span>
+        <div className="flex items-center gap-3">
+          <AlertBadge onClick={onAlertClick} />
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${
+              bitcoinData.wsStatus === "connected"
+                ? "bg-green-400 shadow-[0_0_6px_#4ade80]"
+                : bitcoinData.wsStatus === "connecting"
+                ? "bg-yellow-400 animate-pulse"
+                : "bg-red-400"
+            }`} />
+            <span className="text-white/40 text-xs font-mono capitalize">{bitcoinData.wsStatus}</span>
+          </div>
         </div>
       </div>
 
@@ -101,17 +110,35 @@ function LeftPanel() {
 }
 
 export function DashboardLayout() {
-  return (
-    <div className="flex h-full w-full overflow-hidden">
-      {/* Left panel — 60% */}
-      <div className="w-3/5 h-full border-r border-white/10 overflow-hidden">
-        <LeftPanel />
-      </div>
+  const [alertPanelOpen, setAlertPanelOpen] = useState(false);
+  const { sendMessage } = useChatContext();
 
-      {/* Right panel — 40% */}
-      <div className="w-2/5 h-full overflow-hidden">
-        <ChatPanel />
+  /** Construct an explanation prompt and send it to the chat assistant. */
+  const handleAskAI = useCallback(
+    (event: AlertEvent) => {
+      const prompt = `Alert "${event.ruleName}" fired. The metric "${METRIC_LABELS[event.metric]}" reached ${event.actualValue}, which is ${OPERATOR_LABELS[event.operator]} the threshold ${event.threshold}. Please explain what might cause this.`;
+      sendMessage(prompt);
+      setAlertPanelOpen(false);
+    },
+    [sendMessage],
+  );
+
+  return (
+    <>
+      <AlertToast />
+      <AlertPanel open={alertPanelOpen} onClose={() => setAlertPanelOpen(false)} onAskAI={handleAskAI} />
+
+      <div className="flex h-full w-full overflow-hidden">
+        {/* Left panel — 60% */}
+        <div className="w-3/5 h-full border-r border-white/10 overflow-hidden">
+          <LeftPanel onAlertClick={() => setAlertPanelOpen((v) => !v)} />
+        </div>
+
+        {/* Right panel — 40% */}
+        <div className="w-2/5 h-full overflow-hidden">
+          <ChatPanel />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
