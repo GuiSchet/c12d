@@ -21,6 +21,16 @@ export interface OrphanCountRow { time: string; count: number }
 export interface OrphanVsizeRow { vsize: number; fromCount: number; txid?: string; firstPeer?: number }
 export interface OrphanSourceRow { peer: string; count: number }
 
+/** Per-peer recent message activity for the network pulse graph. */
+export interface PeerActivityRecord {
+  peerId: number;
+  lastTimestamp: number;
+  lastCommand: string;
+  lastInbound: boolean;
+  /** Messages from this peer in the last 2 seconds. */
+  recentCount: number;
+}
+
 export interface BitcoinDataState {
   // network topic
   msgTypeCounts: MsgTypeRow[];
@@ -34,6 +44,10 @@ export interface BitcoinDataState {
   peersByType: PeerTypeRow[];
   peersByNetwork: PeerTypeRow[];
   peersTraffic: PeerTrafficRow[];
+  /** Full peer list from RPC, used by the network pulse graph. */
+  currentPeers: PeerInfo[];
+  /** Per-peer recent message activity for the network pulse graph. */
+  peerActivity: PeerActivityRecord[];
 
   // orphans topic
   orphanCountSeries: OrphanCountRow[];
@@ -52,6 +66,7 @@ const DEFAULT_STATE: BitcoinDataState = {
   msgTypeCounts: [], msgRateSeries: [], connectionHistory: [],
   mempoolSeries: [],
   peersByType: [], peersByNetwork: [], peersTraffic: [],
+  currentPeers: [], peerActivity: [],
   orphanCountSeries: [], orphanVsizeSeries: [], orphanSourcesBar: [],
   recentLogs: [],
   wsStatus: 'disconnected', lastUpdate: null,
@@ -93,6 +108,9 @@ export function BitcoinDataProvider({ children, wsUrl }: { children: React.React
 
   // Message counter for rate calculation
   const msgCounterRef = useRef(0);
+
+  // Per-peer activity tracking for the network pulse graph
+  const peerActivityRef = useRef<Map<number, { lastTimestamp: number; lastCommand: string; lastInbound: boolean; recentCount: number }>>(new Map());
 
   const managerRef = useRef<BitcoinWebSocketManager | null>(null);
   const lastCacheSave = useRef(0);
@@ -181,6 +199,17 @@ export function BitcoinDataProvider({ children, wsUrl }: { children: React.React
       .sort((a, b) => b[1] - a[1])
       .map(([command, count]) => ({ command, count }));
 
+    // Serialize per-peer activity, pruning stale entries (>3s old)
+    const now = Date.now();
+    const peerActivity: PeerActivityRecord[] = [];
+    for (const [peerId, act] of peerActivityRef.current) {
+      if (now - act.lastTimestamp < 3000) {
+        peerActivity.push({ peerId, ...act });
+      } else {
+        peerActivityRef.current.delete(peerId);
+      }
+    }
+
     setData(prev => ({
       ...prev,
       msgTypeCounts,
@@ -190,6 +219,8 @@ export function BitcoinDataProvider({ children, wsUrl }: { children: React.React
       peersByType: byType,
       peersByNetwork: byNetwork,
       peersTraffic: traffic,
+      currentPeers: peersRef.current,
+      peerActivity,
       orphanCountSeries: orphanCountBuf.current.get(),
       orphanVsizeSeries: orphanVsizeBuf.current.get(),
       orphanSourcesBar: orphanSources,
@@ -198,7 +229,6 @@ export function BitcoinDataProvider({ children, wsUrl }: { children: React.React
       lastUpdate: new Date(),
     }));
 
-    const now = Date.now();
     if (now - lastCacheSave.current > 5000) {
       lastCacheSave.current = now;
       saveCacheToStorage();
@@ -233,6 +263,16 @@ export function BitcoinDataProvider({ children, wsUrl }: { children: React.React
           raw: `[p2p] ${dir} ${norm} peer=${meta.peer_id} addr=${meta.addr} size=${meta.size}B`,
         });
       }
+
+      // Track per-peer activity for network pulse graph
+      const now = Date.now();
+      const prev = peerActivityRef.current.get(meta.peer_id);
+      peerActivityRef.current.set(meta.peer_id, {
+        lastTimestamp: now,
+        lastCommand: norm,
+        lastInbound: meta.inbound,
+        recentCount: (prev && now - prev.lastTimestamp < 2000) ? prev.recentCount + 1 : 1,
+      });
     });
 
     // ── eBPF connections ─────────────────────────────────────────────────

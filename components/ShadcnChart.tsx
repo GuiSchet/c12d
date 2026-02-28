@@ -12,6 +12,7 @@ import { ChartDataSummary } from "@/types/charts";
 import { calculateStatistics, generateDataInsights } from "@/lib/chartDataUtils";
 import { useBitcoinData, BitcoinDataState } from "@/contexts/BitcoinDataContext";
 import { useChatContext } from "@/contexts/ChatContext";
+import { NetworkPulseGraph } from "@/components/NetworkPulseGraph";
 
 interface ShadcnChartProps {
   chartId?: string;
@@ -52,6 +53,7 @@ const CHART_AXES: Record<string, ChartAxes> = {
   "orphan-count-line":      { xKey: "time", yKeys: ["count"] },
   "orphan-vsize-scatter":   { xKey: "vsize", yKeys: ["fromCount"], scatterX: "vsize", scatterY: "fromCount" },
   "orphan-sources-bar":     { xKey: "peer",  yKeys: ["count"] },
+  "network-pulse-graph":    { xKey: "id",    yKeys: ["bytes_received"] },
 };
 
 // ── Chart config for recharts' ChartContainer ─────────────────────────────
@@ -74,6 +76,7 @@ const CHART_CONFIGS: Record<string, ChartConfig> = {
   "orphan-count-line":    { count:     { label: "Orphans",        color: "#F7931A" } },
   "orphan-vsize-scatter": { fromCount: { label: "Announcers",     color: "#F7931A" } },
   "orphan-sources-bar":   { count:     { label: "Orphans",        color: "#F7931A" } },
+  "network-pulse-graph":  { bytes_received: { label: "Bytes RX", color: "#F7931A" } },
 };
 
 // ── Map chartId → data slice from BitcoinDataState ────────────────────────
@@ -93,6 +96,7 @@ function getDataForChart(id: string | undefined, bd: BitcoinDataState): Record<s
     case "orphan-count-line":   return bd.orphanCountSeries as unknown as Record<string, unknown>[];
     case "orphan-vsize-scatter":return bd.orphanVsizeSeries as unknown as Record<string, unknown>[];
     case "orphan-sources-bar":  return bd.orphanSourcesBar  as unknown as Record<string, unknown>[];
+    case "network-pulse-graph": return bd.currentPeers      as unknown as Record<string, unknown>[];
     default: return [];
   }
 }
@@ -383,6 +387,9 @@ export function ShadcnChart({
   // ── Chart renderers ───────────────────────────────────────────────────────
 
   const renderChart = () => {
+    // Network pulse graph is a fully custom component
+    if (activeId === "network-pulse-graph") return <NetworkPulseGraph />;
+
     if (data.length === 0) return <EmptyState />;
 
     switch (chartType) {

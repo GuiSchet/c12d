@@ -89,6 +89,16 @@ export const bitcoinChartTemplates: TopicChart[] = [
     topicId: "peers",
     charts: [
       {
+        id: "network-pulse-graph",
+        name: "Live Network Pulse",
+        description: "Radial graph showing live P2P connections with animated message particles",
+        agentDescription: "A radial network visualization placing the Bitcoin node at the center with all connected peers arranged on concentric rings by network type (IPv4, IPv6, Tor, I2P, CJDNS). Animated particles flow along edges when P2P messages are exchanged. Click a peer node to ask the AI assistant about it.",
+        type: "scatter", // placeholder — ShadcnChart dispatches to NetworkPulseGraph directly
+        spec: emptySpec("Live Network Pulse"),
+        dataFields: ["id", "address", "network", "connection_type", "bytes_received"],
+        metrics: ["peer_count", "network_diversity"],
+      } as ChartTemplate,
+      {
         id: "peers-by-type-pie",
         name: "Peers by Connection Type",
         description: "Distribution of peers by type: inbound, outbound-full-relay, block-relay-only, feeler",
