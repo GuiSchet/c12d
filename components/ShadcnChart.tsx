@@ -124,6 +124,7 @@ function TreemapChart({ data }: { data: Record<string, unknown>[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dims, setDims] = useState({ w: 0, h: 0 });
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [maxBlocks, setMaxBlocks] = useState(20);
   const { sendMessage } = useChatContext();
 
   useEffect(() => {
@@ -144,7 +145,7 @@ function TreemapChart({ data }: { data: Record<string, unknown>[] }) {
       firstPeer: d.firstPeer as number | undefined,
     }))
     .sort((a, b) => b.size - a.size)
-    .slice(0, 20);
+    .slice(0, maxBlocks);
 
   const peerColor = (peerId: number | undefined) =>
     BITCOIN_PALETTE[(peerId ?? 0) % BITCOIN_PALETTE.length];
@@ -237,12 +238,15 @@ function TreemapChart({ data }: { data: Record<string, unknown>[] }) {
           }}
         />
 
-        {/* Labels */}
-        {cw > 40 && ch > 28 && (
+        {/* Labels — hidden when cells are too small */}
+        {cw > 55 && ch > 32 && (
           <text x={cx + 5} y={cy + 15} fill="white" fontSize={10} fontFamily="monospace"
-            fontWeight="bold" style={{ pointerEvents: "none" }}>{name}</text>
+            fontWeight="bold" style={{ pointerEvents: "none" }}
+            clipPath={`inset(0 0 0 0)`}>
+            {cw > 75 ? name : name.slice(0, 4)}
+          </text>
         )}
-        {cw > 40 && ch > 44 && (
+        {cw > 70 && ch > 48 && (
           <text x={cx + 5} y={cy + 28} fill="rgba(255,255,255,0.75)" fontSize={9}
             style={{ pointerEvents: "none" }}>
             {size}B · peer#{firstPeer ?? '?'}{extra}
@@ -274,26 +278,42 @@ function TreemapChart({ data }: { data: Record<string, unknown>[] }) {
   if (data.length === 0) return <EmptyState />;
 
   return (
-    <div ref={containerRef} className="w-full h-full relative">
-      {/* Hidden SVG providing the glow filter definition */}
-      <svg width={0} height={0} style={{ position: "absolute" }}>
-        <defs>
-          <filter id="treemap-glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-      </svg>
-      {dims.w > 0 && dims.h > 0 && (
-        <Treemap
-          width={dims.w} height={dims.h}
-          data={treeData} dataKey="size"
-          content={<CustomCell />}
+    <div className="w-full h-full relative flex flex-col">
+      {/* Block count slider */}
+      <div className="flex-shrink-0 flex items-center gap-3 px-2 py-1.5">
+        <label className="text-white/50 text-[10px] font-mono whitespace-nowrap">
+          Blocks: {maxBlocks}
+        </label>
+        <input
+          type="range" min={5} max={Math.min(data.length, 100)} step={1}
+          value={maxBlocks}
+          onChange={e => setMaxBlocks(Number(e.target.value))}
+          className="flex-1 h-1 accent-[#F7931A] cursor-pointer"
         />
-      )}
+      </div>
+
+      {/* Treemap */}
+      <div ref={containerRef} className="flex-1 min-h-0 relative">
+        {/* Hidden SVG providing the glow filter definition */}
+        <svg width={0} height={0} style={{ position: "absolute" }}>
+          <defs>
+            <filter id="treemap-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+        </svg>
+        {dims.w > 0 && dims.h > 0 && (
+          <Treemap
+            width={dims.w} height={dims.h}
+            data={treeData} dataKey="size"
+            content={<CustomCell />}
+          />
+        )}
+      </div>
     </div>
   );
 }
