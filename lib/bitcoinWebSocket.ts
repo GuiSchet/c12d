@@ -52,11 +52,12 @@ export interface ClosedConnection {
   time_established: number;
 }
 
+// Server sends PascalCase keys: Inbound, Outbound, Closed, InboundEvicted
 export type ConnectionEvent =
-  | { inbound: InboundConnection }
-  | { outbound: OutboundConnection }
-  | { closed: ClosedConnection }
-  | { inbound_evicted: ClosedConnection };
+  | { Inbound: InboundConnection }
+  | { Outbound: OutboundConnection }
+  | { Closed: ClosedConnection }
+  | { InboundEvicted: ClosedConnection };
 
 // ---- RPC data structures ----
 export interface PeerInfo {
@@ -173,8 +174,10 @@ export class BitcoinWebSocketManager {
       if (ebpf?.Message) {
         this._emit({ type: 'EbpfMessage', data: ebpf.Message as EbpfMessage });
       } else if (ebpf?.Connection) {
+        // Server sends PascalCase inside { event: { Inbound|Outbound|Closed|InboundEvicted: ... } }
         const conn = ebpf.Connection as Record<string, unknown>;
-        this._emit({ type: 'EbpfConnection', data: conn.event as ConnectionEvent });
+        const evt = (conn.event ?? conn) as ConnectionEvent;
+        this._emit({ type: 'EbpfConnection', data: evt });
       }
     } else if (event.RpcExtractor) {
       const rpc = (event.RpcExtractor as Record<string, unknown>).rpc_event as Record<string, unknown>;
@@ -188,9 +191,15 @@ export class BitcoinWebSocketManager {
         this._emit({ type: 'RpcOrphanTxs', data: (ot.orphans ?? []) as OrphanTx[] });
       }
     } else if (event.LogExtractor) {
+      // LogExtractor events: extract the log_event string if available
+      const logExt = event.LogExtractor as Record<string, unknown>;
+      const raw: string =
+        typeof logExt.log_event === 'string'
+          ? logExt.log_event
+          : JSON.stringify(logExt);
       const logEntry: LogEntry = {
         timestamp: new Date(),
-        raw: JSON.stringify(event.LogExtractor),
+        raw,
       };
       this._emit({ type: 'LogEvent', data: logEntry });
     }
