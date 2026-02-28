@@ -27,12 +27,48 @@ function uid(): string {
 
 // ── localStorage helpers ────────────────────────────────────────────────────
 
+/** Demo rules that seed on first visit so the feature is immediately visible. */
+const DEFAULT_RULES: AlertRule[] = [
+  {
+    id: "demo-msg-rate",
+    name: "High message rate",
+    metric: "msg_rate",
+    operator: "gt",
+    threshold: 5,
+    severity: "warning",
+    cooldownSeconds: 30,
+    enabled: true,
+  },
+  {
+    id: "demo-mempool-size",
+    name: "Large mempool",
+    metric: "mempool_count",
+    operator: "gt",
+    threshold: 1000,
+    severity: "info",
+    cooldownSeconds: 60,
+    enabled: true,
+  },
+  {
+    id: "demo-peer-drop",
+    name: "Low peer count",
+    metric: "peer_count_total",
+    operator: "lt",
+    threshold: 8,
+    severity: "critical",
+    cooldownSeconds: 30,
+    enabled: true,
+  },
+];
+
 function loadRules(): AlertRule[] {
   try {
     const raw = localStorage.getItem(RULES_KEY);
-    return raw ? (JSON.parse(raw) as AlertRule[]) : [];
+    if (raw) return JSON.parse(raw) as AlertRule[];
+    // First visit — seed with demo rules
+    return DEFAULT_RULES;
   } catch {
-    return [];
+    return DEFAULT_RULES;
   }
 }
 
