@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useChartContext } from "./ChartContextProvider";
 import { MiniChartPreview } from "./MiniChartPreview";
-import { BarChart3, TrendingUp, Activity, Search, PieChart, Flame, ArrowLeft } from "lucide-react";
+import { BarChart3, TrendingUp, Activity, Search, PieChart, Flame, ArrowLeft, Network, Database, Users, GitBranch, Terminal } from "lucide-react";
 
 interface ChartSelectorProps {
   onBack?: () => void;
@@ -21,6 +21,13 @@ const chartTypeIcons = {
   heatmap: Flame
 };
 
+const topicIcons = {
+  network: Network,
+  mempool: Database,
+  peers: Users,
+  orphans: GitBranch,
+  logs: Terminal
+};
 
 export function ChartSelector({ onBack, className = "" }: ChartSelectorProps) {
   const { context, selectChart } = useChartContext();
@@ -46,34 +53,40 @@ export function ChartSelector({ onBack, className = "" }: ChartSelectorProps) {
     );
   }
 
+  const TopicIcon = topicIcons[selectedTopic as keyof typeof topicIcons];
+
   return (
     <div className={`flex flex-col items-center ${className}`}>
       <div className="relative w-full flex items-center justify-center mb-8">
-        {/* Circular back button - positioned on the left */}
+        {/* Circular back button */}
         {onBack && (
           <Button
             onClick={onBack}
-            className="absolute left-0 w-10 h-10 rounded-full flex items-center justify-center text-white bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 transition-all duration-300 p-0"
+            className="absolute left-0 w-10 h-10 rounded-full flex items-center justify-center text-white/70 bg-black/40 backdrop-blur-md border border-white/10 hover:border-[#F7931A]/30 hover:text-white transition-all duration-300 p-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
         )}
 
-        {/* Centered title */}
-        <h3 className="text-xl font-bold text-white">
-          {topicDisplayNames[selectedTopic as string]}
-        </h3>
+        {/* Centered title with topic icon */}
+        <div className="text-center">
+          <div className="flex items-center gap-2 justify-center">
+            {TopicIcon && <TopicIcon className="w-4 h-4 text-[#F7931A]" />}
+            <h3 className="text-xl font-bold text-white">
+              {topicDisplayNames[selectedTopic as string]}
+            </h3>
+          </div>
+          <p className="text-white/40 text-xs font-mono mt-1">select a chart to explore</p>
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-3 border-cyan-400 mx-auto mb-6"></div>
-          <div className="flex items-center justify-center space-x-1">
-            <div className="flex space-x-1">
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-            </div>
+        <div className="flex flex-col items-center justify-center py-12 gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F7931A]"></div>
+          <div className="flex space-x-1">
+            <div className="w-2 h-2 bg-[#F7931A]/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-[#F7931A]/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-[#F7931A]/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
         </div>
       ) : (
@@ -85,38 +98,42 @@ export function ChartSelector({ onBack, className = "" }: ChartSelectorProps) {
               return (
                 <motion.div
                   key={chart.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", damping: 20, stiffness: 200, delay: index * 0.1 }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleChartSelect(chart.id)}
-                  className=""
                 >
-                  <Card className="cursor-pointer transition-all duration-300 bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 hover:border-white/50 shadow-xl hover:shadow-2xl w-80 min-h-64">
+                  <Card className="cursor-pointer transition-all duration-300 bg-black/40 backdrop-blur-md border border-white/10 hover:border-[#F7931A]/30 hover:shadow-[0_0_20px_rgba(247,147,26,0.12)] shadow-xl w-80 min-h-64 overflow-hidden">
+                    {/* Orange top accent line */}
+                    <div className="h-px bg-gradient-to-r from-transparent via-[#F7931A]/40 to-transparent" />
+
                     <CardHeader className="pb-4 pt-6 relative">
-                      {/* Icon positioned absolutely */}
+                      {/* Chart type icon — muted, top-right */}
                       <div className="absolute top-4 right-4">
-                        <IconComponent className="w-6 h-6 text-white" />
+                        <IconComponent className="w-6 h-6 text-white/30" />
                       </div>
                       <CardTitle className="text-lg font-medium text-white/90 pr-10 mb-2">
                         {chart.name}
                       </CardTitle>
                     </CardHeader>
+
                     <CardContent className="flex flex-col flex-1 px-6 pb-6">
                       {/* Mini chart preview */}
-                      <div className="h-16 mb-4 flex-shrink-0 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
+                      <div className="h-16 mb-4 flex-shrink-0 rounded-lg bg-black/30 border border-white/10">
                         <MiniChartPreview type={chart.type} className="w-full h-full" />
                       </div>
 
+                      {/* Type badge + metric tags */}
                       <div className="flex flex-wrap gap-2 mb-6 flex-shrink-0">
-                        <span className="text-sm bg-white/20 text-white px-4 py-2 rounded-full backdrop-blur-sm">
-                          {chart.type.charAt(0).toUpperCase() + chart.type.slice(1)}
+                        <span className="bg-[#F7931A]/15 border border-[#F7931A]/20 text-[#F7931A]/80 font-mono text-xs px-2 py-0.5 rounded">
+                          {chart.type}
                         </span>
                         {chart.metrics.slice(0, 2).map((metric) => (
                           <span
                             key={metric}
-                            className="text-sm bg-white/15 text-white/80 px-4 py-2 rounded-full backdrop-blur-sm"
+                            className="bg-white/5 border border-white/10 text-white/60 font-mono text-xs px-2 py-0.5 rounded"
                           >
                             {metric.replace("_", " ")}
                           </span>
@@ -125,7 +142,7 @@ export function ChartSelector({ onBack, className = "" }: ChartSelectorProps) {
 
                       <Button
                         onClick={(e) => {
-                          e.stopPropagation(); // Prevent card click when button is clicked
+                          e.stopPropagation();
                           handleChartSelect(chart.id);
                         }}
                         className="w-full mt-auto text-white font-semibold rounded-full transition-all duration-300 transform hover:scale-105 py-3 text-base"
@@ -150,7 +167,6 @@ export function ChartSelector({ onBack, className = "" }: ChartSelectorProps) {
           </div>
         </div>
       )}
-
 
       {availableCharts.length === 0 && !isLoading && (
         <div className="text-center text-white/70 py-8">
