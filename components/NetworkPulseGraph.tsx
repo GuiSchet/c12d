@@ -72,6 +72,8 @@ export function NetworkPulseGraph() {
   const [hoveredPeer, setHoveredPeer] = useState<PeerInfo | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
   const particleIdRef = useRef(0);
+  const [selectedNetworks, setSelectedNetworks] = useState<Set<string>>(new Set(RING_ORDER));
+  const [topNPeers, setTopNPeers] = useState<number | null>(null);
 
   // Observe container size
   useEffect(() => {
@@ -88,16 +90,26 @@ export function NetworkPulseGraph() {
   const cy = dims.h / 2;
   const unit = Math.min(dims.w, dims.h);
 
+  // ── Filter peers ─────────────────────────────────────────────────────────
+
+  const filteredPeers = useMemo(() => {
+    let peers = currentPeers.filter(p => selectedNetworks.has(p.network || "unknown"));
+    peers = [...peers].sort((a, b) =>
+      (b.bytes_received + b.bytes_sent) - (a.bytes_received + a.bytes_sent)
+    );
+    return topNPeers !== null ? peers.slice(0, topNPeers) : peers;
+  }, [currentPeers, selectedNetworks, topNPeers]);
+
   // ── Compute peer node positions ──────────────────────────────────────────
 
   const peerNodes: PeerNode[] = useMemo(() => {
-    if (!unit || currentPeers.length === 0) return [];
+    if (!unit || filteredPeers.length === 0) return [];
 
-    const maxBytes = Math.max(...currentPeers.map(p => p.bytes_received), 1);
+    const maxBytes = Math.max(...filteredPeers.map(p => p.bytes_received), 1);
 
     // Group peers by network
     const groups: Record<string, PeerInfo[]> = {};
-    currentPeers.forEach(p => {
+    filteredPeers.forEach(p => {
       const net = p.network || "unknown";
       (groups[net] ??= []).push(p);
     });
@@ -122,7 +134,7 @@ export function NetworkPulseGraph() {
     });
 
     return nodes;
-  }, [currentPeers, cx, cy, unit]);
+  }, [filteredPeers, cx, cy, unit]);
 
   // Build a peerId → node position lookup
   const peerPosMap = useMemo(() => {
@@ -404,19 +416,38 @@ export function NetworkPulseGraph() {
         })()}
       </svg>
 
-      {/* Network legend */}
+      {/* Network legend — interactive toggles */}
       <div className="absolute bottom-3 right-3 bg-black/60 rounded-lg px-3 py-2 text-[10px] font-mono backdrop-blur-sm border border-white/10">
-        {RING_ORDER.filter(net => currentPeers.some(p => (p.network || "unknown") === net)).map(net => (
-          <div key={net} className="flex items-center gap-2 py-0.5">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: NET_COLORS[net] }} />
-            <span className="text-white/60">{net}</span>
-          </div>
-        ))}
+        {RING_ORDER.filter(net => currentPeers.some(p => (p.network || "unknown") === net)).map(net => {
+          const active = selectedNetworks.has(net);
+          return (
+            <button key={net}
+              onClick={() => setSelectedNetworks(prev => {
+                const next = new Set(prev);
+                active ? next.delete(net) : next.add(net);
+                return next;
+              })}
+              className="flex items-center gap-2 py-0.5 w-full hover:opacity-100 transition-opacity"
+              style={{ opacity: active ? 1 : 0.3 }}>
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: NET_COLORS[net] }} />
+              <span className="text-white/60">{net}</span>
+              {!active && <span className="ml-auto text-white/30">✕</span>}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Peer count badge */}
-      <div className="absolute top-3 left-3 bg-black/60 rounded-lg px-3 py-1.5 text-xs font-mono backdrop-blur-sm border border-white/10 text-white/60">
-        {currentPeers.length} peers
+      {/* Peer count badge + Top N filter */}
+      <div className="absolute top-3 left-3 bg-black/60 rounded-lg px-3 py-1.5 text-xs font-mono backdrop-blur-sm border border-white/10 text-white/60 flex items-center gap-2">
+        <span>{filteredPeers.length}/{currentPeers.length} peers</span>
+        <span className="text-white/30">|</span>
+        {([null, 10, 25, 50] as (number | null)[]).map(n => (
+          <button key={n ?? "all"}
+            onClick={() => setTopNPeers(n)}
+            className={`px-1.5 rounded ${topNPeers === n ? "text-white bg-white/20" : "hover:text-white/80"}`}>
+            {n ?? "all"}
+          </button>
+        ))}
       </div>
     </div>
   );
