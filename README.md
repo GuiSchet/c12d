@@ -11,7 +11,7 @@
 
 This project retrieves its data directly from a node monitored by [peer-observer](https://github.com/peer-observer/peer-observer), connecting via WebSocket to ingest a live feed of eBPF and RPC events without any modifications to Bitcoin Core itself.
 
-> 🏆 **Born at [btc++ Floripa 2026](https://btcplusplus.dev/conf/floripa26) hackathon.**
+> **Born at [btc++ Floripa 2026](https://btcplusplus.dev/conf/floripa26) hackathon.**
 > **Team:**
 > - [@GuiSchet](https://github.com/GuiSchet)
 > - [@f3r10](https://github.com/f3r10)
@@ -157,7 +157,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 # ─── Optional ──────────────────────────────────────────────────────────────
 # WebSocket URL for the peer-observer feed.
-# Default (public demo node): wss://demo.peer.observer/websocket/
+# Default (public demo node): wss://your.peer.observer/websocket/
 # Set this to point to your own peer-observer instance:
 NEXT_PUBLIC_BITCOIN_WS_URL=wss://your-node.example.com/websocket/
 ```
