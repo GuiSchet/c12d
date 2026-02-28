@@ -11,6 +11,7 @@ import { useChartContext } from "./ChartContextProvider";
 import { ChartDataSummary } from "@/types/charts";
 import { calculateStatistics, generateDataInsights } from "@/lib/chartDataUtils";
 import { useBitcoinData, BitcoinDataState } from "@/contexts/BitcoinDataContext";
+import { useChatContext } from "@/contexts/ChatContext";
 
 interface ShadcnChartProps {
   chartId?: string;
@@ -118,6 +119,8 @@ function EmptyState() {
 function TreemapChart({ data }: { data: Record<string, unknown>[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dims, setDims] = useState({ w: 0, h: 0 });
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const { sendMessage } = useChatContext();
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -129,35 +132,136 @@ function TreemapChart({ data }: { data: Record<string, unknown>[] }) {
     return () => ro.disconnect();
   }, []);
 
-  const treeData = data.map(d => ({
-    name: ((d.txid as string) ?? '').slice(0, 8) || 'tx',
-    size: (d.vsize as number) || 1,
-    fromCount: (d.fromCount as number) || 1,
-    firstPeer: d.firstPeer as number | undefined,
-  }));
+  const treeData = data
+    .map(d => ({
+      name: ((d.txid as string) ?? '').slice(0, 8) || 'tx',
+      size: (d.vsize as number) || 1,
+      fromCount: (d.fromCount as number) || 1,
+      firstPeer: d.firstPeer as number | undefined,
+    }))
+    .sort((a, b) => b.size - a.size)
+    .slice(0, 20);
 
   const peerColor = (peerId: number | undefined) =>
     BITCOIN_PALETTE[(peerId ?? 0) % BITCOIN_PALETTE.length];
 
   const CustomCell = (props: Record<string, unknown>) => {
-    const { x, y, width, height, name, fromCount, size, firstPeer } =
-      props as { x: number; y: number; width: number; height: number;
+    // Skip non-leaf (parent) nodes — they render the orange background
+    const depth = (props as { depth?: number }).depth ?? 0;
+    if (depth < 1) return <g />;
+
+    const { x, y, width, height, index, name, fromCount, size, firstPeer } =
+      props as { x: number; y: number; width: number; height: number; index: number;
                  name: string; fromCount: number; size: number; firstPeer?: number };
     const fill = peerColor(firstPeer);
     const extra = fromCount > 1 ? ` +${fromCount - 1}` : '';
+    const isHovered = hoveredIdx === index;
+
+    // Inset each cell to create visible gaps between blocks
+    const gap = 5;
+    const cx = x + gap;
+    const cy = y + gap;
+    const cw = Math.max(0, width - gap * 2);
+    const ch = Math.max(0, height - gap * 2);
+
+    // Seeded PRNG so each cell gets a unique but deterministic random path
+    let s = index * 2654435761 + 374761393;
+    const rand = () => { s = (s ^ (s >> 16)) * 2246822507 >>> 0; s = (s ^ (s >> 13)) * 3266489917 >>> 0; return ((s ^ (s >> 16)) >>> 0) / 4294967296; };
+
+    const dur = 4 + rand() * 4;                          // 4 – 8s cycle
+    const points = 6;
+    const waypoints: string[] = ["0,0"];
+    for (let i = 1; i < points - 1; i++) {
+      const px = (rand() - 0.5) * 10;                    // -5 to +5 px
+      const py = (rand() - 0.5) * 10;
+      waypoints.push(`${px.toFixed(1)},${py.toFixed(1)}`);
+    }
+    waypoints.push("0,0");
+    const driftValues = waypoints.join("; ");
+    const driftSplines = Array(waypoints.length - 1)
+      .fill(`${(0.3 + rand() * 0.3).toFixed(2)} 0 ${(0.5 + rand() * 0.3).toFixed(2)} 1`)
+      .join("; ");
+
+    if (cw <= 0 || ch <= 0) return null;
+
     return (
-      <g>
-        <rect x={x} y={y} width={width} height={height}
-          fill={fill} fillOpacity={0.85}
-          stroke="rgba(0,0,0,0.5)" strokeWidth={1} rx={3} />
-        {width > 40 && height > 28 && (
-          <text x={x + 5} y={y + 15} fill="white" fontSize={10} fontFamily="monospace"
-            fontWeight="bold">{name}</text>
+      <g
+        onMouseEnter={() => setHoveredIdx(index)}
+        onMouseLeave={() => setHoveredIdx(null)}
+        onClick={() => {
+          const fullTxid = ((data[index] as Record<string, unknown>)?.txid as string) ?? name;
+          sendMessage(
+            `Tell me about this orphan transaction: txid=${fullTxid}, vsize=${size} bytes, announced by ${fromCount} peer${fromCount > 1 ? "s" : ""} (first peer: #${firstPeer ?? "unknown"}). What could cause a transaction to become orphaned, and what does its size and peer count suggest?`
+          );
+        }}
+        style={{ cursor: "pointer" }}
+      >
+        {/* Idle drift animation — figure-eight-ish wandering path */}
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values={driftValues}
+          dur={`${dur}s`}
+          repeatCount="indefinite"
+          calcMode="spline"
+          keySplines={driftSplines}
+        />
+
+        {/* Glow layer visible on hover */}
+        {isHovered && (
+          <rect
+            x={cx - 2} y={cy - 2}
+            width={cw + 4} height={ch + 4}
+            rx={5}
+            fill="none"
+            stroke={fill}
+            strokeWidth={2}
+            opacity={0.7}
+            filter="url(#treemap-glow)"
+          />
         )}
-        {width > 40 && height > 44 && (
-          <text x={x + 5} y={y + 28} fill="rgba(255,255,255,0.75)" fontSize={9}>
+
+        {/* Main cell */}
+        <rect x={cx} y={cy} width={cw} height={ch}
+          fill={fill}
+          fillOpacity={isHovered ? 1 : 0.85}
+          stroke={isHovered ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)"}
+          strokeWidth={isHovered ? 1.5 : 1}
+          rx={4}
+          style={{
+            transition: "fill-opacity 0.2s ease, stroke 0.2s ease, stroke-width 0.2s ease",
+          }}
+        />
+
+        {/* Labels */}
+        {cw > 40 && ch > 28 && (
+          <text x={cx + 5} y={cy + 15} fill="white" fontSize={10} fontFamily="monospace"
+            fontWeight="bold" style={{ pointerEvents: "none" }}>{name}</text>
+        )}
+        {cw > 40 && ch > 44 && (
+          <text x={cx + 5} y={cy + 28} fill="rgba(255,255,255,0.75)" fontSize={9}
+            style={{ pointerEvents: "none" }}>
             {size}B · peer#{firstPeer ?? '?'}{extra}
           </text>
+        )}
+
+        {/* Hover tooltip overlay */}
+        {isHovered && cw > 30 && ch > 20 && (
+          <g style={{ pointerEvents: "none" }}>
+            <rect
+              x={cx + cw / 2 - 55} y={cy - 34}
+              width={110} height={26} rx={6}
+              fill="rgba(0,0,0,0.9)"
+              stroke="rgba(247,147,26,0.5)" strokeWidth={1}
+            />
+            <text
+              x={cx + cw / 2} y={cy - 17}
+              textAnchor="middle" fill="#F7931A" fontSize={10} fontWeight="bold"
+              fontFamily="monospace"
+            >
+              {size}B · {fromCount} peer{fromCount > 1 ? 's' : ''}
+            </text>
+          </g>
         )}
       </g>
     );
@@ -166,7 +270,19 @@ function TreemapChart({ data }: { data: Record<string, unknown>[] }) {
   if (data.length === 0) return <EmptyState />;
 
   return (
-    <div ref={containerRef} className="w-full h-full">
+    <div ref={containerRef} className="w-full h-full relative">
+      {/* Hidden SVG providing the glow filter definition */}
+      <svg width={0} height={0} style={{ position: "absolute" }}>
+        <defs>
+          <filter id="treemap-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+      </svg>
       {dims.w > 0 && dims.h > 0 && (
         <Treemap
           width={dims.w} height={dims.h}
