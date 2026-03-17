@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>c12d — AI-Powered Bitcoin Network Monitor</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #000000;
+      --orange: #F7931A;
+      --orange-dim: rgba(247, 147, 26, 0.06);
+      --orange-border: rgba(247, 147, 26, 0.25);
+      --orange-glow: 0 0 50px rgba(247, 147, 26, 0.45);
+      --text: rgba(255, 255, 255, 1);
+      --text-muted: rgba(255, 255, 255, 0.45);
+      --text-faint: rgba(255, 255, 255, 0.30);
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --card-border: rgba(255, 255, 255, 0.10);
+      --font: -apple-system, "system-ui", BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 16px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ──────────────────────────────────── */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section {
+      padding: 80px 0;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    section:last-of-type {
+      border-bottom: none;
+    }
+
+    /* ── Typography ──────────────────────────────── */
+    h1 {
+      font-size: clamp(64px, 12vw, 96px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1;
+    }
+
+    h2 {
+      font-size: clamp(24px, 4vw, 32px);
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    a {
+      color: var(--orange);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .orange {
+      color: var(--orange);
+    }
+
+    .muted {
+      color: var(--text-muted);
+    }
+
+    .faint {
+      color: var(--text-faint);
+    }
+
+    /* ── Hero ────────────────────────────────────── */
+    #hero {
+      position: relative;
+      padding: 120px 0 100px;
+      text-align: center;
+      border-bottom: 1px solid var(--card-border);
+      overflow: hidden;
+    }
+
+    .glow-orb {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(247, 147, 26, 0.08) 0%, transparent 70%);
+      filter: blur(160px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #hero .inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .b4os-logo {
+      width: 140px;
+      opacity: 0.8;
+      margin-bottom: 32px;
+    }
+
+    .hero-title {
+      font-size: clamp(72px, 16vw, 96px);
+      font-weight: 800;
+      letter-spacing: -4px;
+      line-height: 1;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(16px, 3vw, 20px);
+      color: var(--orange);
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      border: 1px solid var(--orange-border);
+      background: var(--orange-dim);
+      color: var(--orange);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 100px;
+    }
+
+    /* ── Section label ───────────────────────────── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 12px;
+    }
+
+    /* ── Cards ───────────────────────────────────── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 28px;
+    }
+
+    .card-orange {
+      background: var(--orange-dim);
+      border: 1px solid var(--orange-border);
+      box-shadow: var(--orange-glow);
+      border-radius: 16px;
+      padding: 28px;
+    }
+
+    /* ── Dashboard grid ──────────────────────────── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 32px;
+    }
+
+    .dashboard-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .dashboard-card .icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    .dashboard-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .dashboard-card ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .dashboard-card ul li {
+      color: var(--text-muted);
+      font-size: 14px;
+      padding: 3px 0;
+      display: flex;
+      gap: 8px;
+    }
+
+    .dashboard-card ul li::before {
+      content: "·";
+      color: var(--orange);
+      flex-shrink: 0;
+    }
+
+    /* ── Architecture diagram ────────────────────── */
+    .arch-diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0;
+      margin: 40px 0;
+    }
+
+    .arch-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      text-align: center;
+      min-width: 120px;
+    }
+
+    .arch-box.orange-box {
+      background: var(--orange-dim);
+      border-color: var(--orange-border);
+      box-shadow: var(--orange-glow);
+    }
+
+    .arch-box .arch-icon {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+
+    .arch-box .arch-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .arch-box.orange-box .arch-name {
+      color: var(--orange);
+    }
+
+    .arch-box .arch-sub {
+      font-size: 11px;
+      color: var(--text-faint);
+    }
+
+    .arch-box.orange-box .arch-sub {
+      color: rgba(247, 147, 26, 0.6);
+    }
+
+    .arch-arrow {
+      color: var(--text-faint);
+      font-size: 18px;
+      padding: 0 6px;
+      flex-shrink: 0;
+    }
+
+    /* ── Table ───────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 24px;
+    }
+
+    th {
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--orange);
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 14px;
+      vertical-align: top;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    td:first-child {
+      color: var(--text);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* ── Team ────────────────────────────────────── */
+    .team-grid {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .team-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px 28px;
+      text-align: center;
+      flex: 1;
+      min-width: 160px;
+    }
+
+    .team-card .handle {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .team-card a {
+      font-size: 13px;
+    }
+
+    /* ── Links row ───────────────────────────────── */
+    .links-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 32px;
+    }
+
+    .link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--orange-border);
+      background: var(--orange-dim);
+      color: var(--orange);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: box-shadow 0.2s;
+    }
+
+    .link-btn:hover {
+      box-shadow: var(--orange-glow);
+      text-decoration: none;
+    }
+
+    /* ── Footer ──────────────────────────────────── */
+    footer {
+      padding: 48px 0 32px;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.20);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Responsive ──────────────────────────────── */
+    @media (max-width: 640px) {
+      section {
+        padding: 56px 0;
+      }
+
+      .hero-title {
+        letter-spacing: -2px;
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .arch-diagram {
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .arch-arrow {
+        transform: rotate(90deg);
+        padding: 4px 0;
+      }
+
+      table {
+        font-size: 13px;
+      }
+
+      th,
+      td {
+        padding: 10px 10px;
+      }
+
+      .glow-orb {
+        width: 400px;
+        height: 400px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── HERO ─────────────────────────────────────────── -->
+  <section id="hero">
+    <div class="glow-orb"></div>
+    <div class="inner container">
+      <img src="./b4os-logo.png" alt="B4OS Logo" class="b4os-logo" />
+      <div class="hero-title">c12d</div>
+      <div class="hero-subtitle">Your AI assistant for Bitcoin network monitoring</div>
+      <span class="hero-badge">Born at btc++ Floripa 2026</span>
+    </div>
+  </section>
+
+  <!-- ── SECTION 1: THE PROBLEM ───────────────────────── -->
+  <section id="problem">
+    <div class="container">
+      <div class="section-label">The Problem</div>
+      <h2>Bitcoin nodes are a black box</h2>
+      <p>
+        Running a Bitcoin node gives you the strongest possible connection to the network — but almost no visibility
+        into what is actually happening at the P2P layer. Peer connections appear as bare IP addresses, mempool activity
+        is a raw flood of transaction hashes, and the gossip messages exchanged between nodes are invisible without deep
+        technical tooling.
+      </p>
+      <p>
+        Most node operators never see how many peers they are connected to at any given moment, which peers are
+        misbehaving, how their mempool compares to the rest of the network, or what the protocol-level events happening
+        inside their node actually mean.
+      </p>
+      <p>
+        The result is that even experienced Bitcoin users treat their own node as a black box — something that "just
+        works" but cannot be interrogated, understood, or reasoned about in real time. If something goes wrong (a peer
+        flood, a mempool spike, an unexpected orphan storm), there is no intuitive way to notice it, let alone
+        understand it.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── SECTION 2: WHAT IS c12d ──────────────────────── -->
+  <section id="what-is-c12d">
+    <div class="container">
+      <div class="section-label">The Solution</div>
+      <h2>What is <span class="orange">c12d</span>?</h2>
+      <p>
+        c12d is a real-time Bitcoin network monitoring dashboard with an embedded AI assistant. It connects to a running
+        Bitcoin node through <strong style="color:var(--text)">peer-observer</strong> — captures raw P2P messages and
+        streams them via NATS — and presents everything in a live, human-readable
+        interface. The AI assistant sits on top of that data stream, letting operators ask natural-language questions
+        about what their node is seeing right now.
+      </p>
+
+      <div class="arch-diagram">
+        <div class="arch-box">
+          <div class="arch-icon">₿</div>
+          <div class="arch-name">Bitcoin Core</div>
+          <div class="arch-sub">Runs Bitcoin Core</div>
+        </div>
+        <div class="arch-arrow">▶</div>
+        <div class="arch-box">
+          <div class="arch-icon">⚡</div>
+          <div class="arch-name">Extractor</div>
+          <div class="arch-sub">Captures P2P events</div>
+        </div>
+        <div class="arch-arrow">▶</div>
+        <div class="arch-box">
+          <div class="arch-icon">📡</div>
+          <div class="arch-name">NATS</div>
+          <div class="arch-sub">Message bus</div>
+        </div>
+        <div class="arch-arrow">▶</div>
+        <div class="arch-box">
+          <div class="arch-icon">🔌</div>
+          <div class="arch-name">WebSocket</div>
+          <div class="arch-sub">Streams live data</div>
+          <div class="arch-sub" style="color:var(--text-faint);font-style:italic;">peer-observer</div>
+        </div>
+        <div class="arch-arrow">▶</div>
+        <div class="arch-box">
+          <div class="arch-icon">📊</div>
+          <div class="arch-name">Dashboard</div>
+          <div class="arch-sub">Charts &amp; metrics</div>
+        </div>
+        <div class="arch-arrow">▶</div>
+        <div class="arch-box orange-box">
+          <div class="arch-icon">🤖</div>
+          <div class="arch-name">AI Assistant</div>
+          <div class="arch-sub">Explains everything</div>
+          <div class="arch-sub" style="font-weight:700;font-style:italic;">c12d</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 3: DASHBOARD AREAS ───────────────────── -->
+  <section id="dashboard">
+    <div class="container">
+      <div class="section-label">Dashboard</div>
+      <h2>5 live monitoring areas</h2>
+      <p>The c12d dashboard is divided into five focused panels, each streaming data directly from the Bitcoin node in
+        real time.</p>
+
+      <div class="dashboard-grid">
+
+        <div class="dashboard-card">
+          <div class="icon">🌐</div>
+          <h3>Network Activity</h3>
+          <ul>
+            <li>Pulse graph of live P2P message volume over time</li>
+            <li>Per-message-type breakdown (inv, tx, block, ping…)</li>
+            <li>Network-wide propagation latency trends</li>
+          </ul>
+        </div>
+
+        <div class="dashboard-card">
+          <div class="icon">💧</div>
+          <h3>Mempool State</h3>
+          <ul>
+            <li>Current mempool size and fee-rate distribution</li>
+            <li>Transaction arrival rate vs. confirmation rate</li>
+            <li>Fee bumping and replacement (RBF) activity</li>
+          </ul>
+        </div>
+
+        <div class="dashboard-card">
+          <div class="icon">🔗</div>
+          <h3>Peers</h3>
+          <ul>
+            <li>Live list of connected peers with metadata</li>
+            <li>Per-peer message rates and latency</li>
+            <li>Geographic distribution and version breakdown</li>
+          </ul>
+        </div>
+
+        <div class="dashboard-card">
+          <div class="icon">👻</div>
+          <h3>Orphaned Transactions</h3>
+          <ul>
+            <li>Orphan pool size and churn rate over time</li>
+            <li>Transactions awaiting missing parents</li>
+            <li>Resolution rate — how quickly orphans are claimed</li>
+          </ul>
+        </div>
+
+        <div class="dashboard-card" style="grid-column: span 2;">
+          <div class="icon">📋</div>
+          <h3>Debug Logs</h3>
+          <ul>
+            <li>Raw peer-observer event stream with timestamps</li>
+            <li>Filterable by event type, peer, or message kind</li>
+            <li>Full protocol payload inspection for developers</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 4: AI ASSISTANT ───────────────────────── -->
+  <section id="ai-assistant">
+    <div class="container">
+      <div class="section-label">AI Assistant</div>
+      <h2>Ask your node anything</h2>
+
+      <div class="card-orange">
+        <p style="color:var(--text); margin-bottom:20px;">
+          The AI assistant is not a static chatbot — it has access to the live data flowing through the dashboard. Every
+          answer is grounded in what your node is seeing right now, not a generic description of how Bitcoin works.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Capability</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Context-Aware</td>
+              <td>Answers reference current mempool state, active peer count, and real-time event data rather than
+                generic explanations.</td>
+            </tr>
+            <tr>
+              <td>Anomaly Detection</td>
+              <td>Identifies unusual patterns — peer flooding, orphan spikes, fee abnormalities — and explains what
+                might be causing them.</td>
+            </tr>
+            <tr>
+              <td>Educational</td>
+              <td>Explains Bitcoin protocol concepts in plain language using your own node's live data as concrete
+                examples.</td>
+            </tr>
+            <tr>
+              <td>Natural Language Navigation</td>
+              <td>Lets operators explore dashboard data through conversation rather than having to manually filter or
+                read raw logs.</td>
+            </tr>
+            <tr>
+              <td>Protocol Expert</td>
+              <td>Deep knowledge of Bitcoin P2P protocol messages (inv, getdata, tx, block, ping, addr…) and what they
+                signal about network health.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 5: TECH STACK ─────────────────────────── -->
+  <section id="tech-stack">
+    <div class="container">
+      <div class="section-label">Tech Stack</div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Technology</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Data source</td>
+              <td>Bitcoin Core (full node)</td>
+            </tr>
+            <tr>
+              <td>P2P extraction</td>
+              <td><a href="https://github.com/0xB10C/peer-observer">peer-observer</a> by 0xB10C</td>
+            </tr>
+            <tr>
+              <td>Message bus</td>
+              <td>NATS (JetStream)</td>
+            </tr>
+            <tr>
+              <td>Backend / API</td>
+              <td>WebSocket relay</td>
+            </tr>
+            <tr>
+              <td>Frontend</td>
+              <td>Next.js 14 + React + Tailwind CSS</td>
+            </tr>
+            <tr>
+              <td>Charts</td>
+              <td>Recharts</td>
+            </tr>
+            <tr>
+              <td>AI assistant</td>
+              <td>Claude (Anthropic) via streaming API</td>
+            </tr>
+            <tr>
+              <td>Hosting</td>
+              <td>Self-hosted (Docker Compose - coming soon)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 6: TEAM & LINKS ───────────────────────── -->
+  <section id="team">
+    <div class="container">
+      <div class="section-label">Team</div>
+      <h2>Built at btc++ Floripa 2026</h2>
+      <p>c12d was built over a weekend hackathon at btc++ in Florianópolis, Brazil.</p>
+
+      <div class="team-grid">
+        <div class="team-card">
+          <div class="handle">GuiSchet</div>
+          <a href="https://github.com/GuiSchet" target="_blank" rel="noopener">@GuiSchet on GitHub</a>
+        </div>
+        <div class="team-card">
+          <div class="handle">Fernando</div>
+          <a href="https://github.com/f3r10" target="_blank" rel="noopener">@f3r10 on GitHub</a>
+        </div>
+      </div>
+
+      <div class="links-row">
+        <a class="link-btn" href="https://github.com/GuiSchet/c12d" target="_blank" rel="noopener">
+          ⚡ GitHub Repository
+        </a>
+        <a class="link-btn" href="https://github.com/0xB10C/peer-observer" target="_blank" rel="noopener">
+          🔍 peer-observer
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ─────────────────────────────────────────── -->
+  <footer>
+    <div class="container">
+      open source · real-time P2P data
+    </div>
+  </footer>
+
+</body>
+
+</html>
