@@ -40,85 +40,104 @@ export default function Home() {
         </div>
 
         {/* Architecture diagram */}
-        <div className="w-full">
-          <p className="text-white/30 text-xs uppercase tracking-widest mb-5 font-mono">How it works</p>
+        <div className="w-full relative">
+          {/* Subtle bg glow behind the whole section */}
+          <div className="absolute inset-0 -mx-6 rounded-2xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm pointer-events-none" />
+          <div className="absolute inset-0 -mx-6 rounded-2xl bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none" />
 
-          <div className="flex items-end justify-center gap-0">
+
+          <div className="relative z-10 flex items-end justify-center gap-0 pt-4">
 
             {/* peer-observer group */}
             <div className="flex flex-col items-center gap-2">
-              <div
-                className="flex items-center gap-0 px-3 pt-3 pb-2 rounded-xl border border-white/10"
-                style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
-              >
+              <div className="relative flex items-center gap-1 px-4 pt-5 pb-4 rounded-xl border border-white/10 bg-black/40 backdrop-blur-md shadow-xl overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
                 {steps.slice(0, 4).map((step, i) => (
                   <div key={step.label} className="flex items-center">
-                    <div className="flex flex-col items-center gap-1.5 w-20">
+                    <div className="flex flex-col items-center gap-2 w-[72px]">
                       <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-xl border border-white/10"
-                        style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                        className="w-11 h-11 rounded-xl flex items-center justify-center text-lg border border-white/10"
+                        style={{ backgroundColor: "rgba(255,255,255,0.04)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
                       >
-                        {step.icon}
+                        <span style={step.label === "Bitcoin Node" ? { color: "#F7931A" } : undefined}>
+                          {step.icon}
+                        </span>
                       </div>
-                      <span className="text-white/60 text-[10px] font-semibold leading-tight">{step.label}</span>
-                      <span className="text-white/25 text-[9px] leading-tight">{step.desc}</span>
+                      <span className="bg-white/5 border border-white/10 text-white/55 font-mono text-[9px] px-1.5 py-0.5 rounded tracking-wide text-center leading-tight">
+                        {step.label}
+                      </span>
+                      <span className="text-white/25 text-[8px] leading-tight text-center">{step.desc}</span>
                     </div>
                     {i < 3 && (
-                      <div className="flex flex-col items-center mx-1 mb-6">
-                        <div className="w-5 h-px bg-white/10" />
-                        <span className="text-white/15 text-[8px] mt-0.5">▶</span>
+                      <div className="flex flex-col items-center mx-1 pb-7">
+                        <div className="w-4 h-px bg-white/10" />
+                        <svg width="4" height="7" viewBox="0 0 5 8" className="mt-0.5" fill="rgba(255,255,255,0.12)">
+                          <path d="M0 0 L5 4 L0 8" />
+                        </svg>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
-              <span className="text-white/25 text-[10px] font-mono tracking-wide">peer-observer</span>
+              <span className="text-white/20 text-[9px] font-mono tracking-widest uppercase">peer-observer</span>
             </div>
 
             {/* Arrow between groups */}
-            <div className="flex flex-col items-center mx-2 mb-10">
-              <div className="w-6 h-px bg-[#F7931A]/40" />
-              <span className="text-[#F7931A]/40 text-[8px] mt-0.5">▶</span>
+            <div className="flex flex-col items-center mx-2 pb-11">
+              <div className="flex items-center gap-0.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#F7931A]/40 flex-shrink-0" />
+                <div className="w-5 h-px bg-gradient-to-r from-[#F7931A]/40 to-[#F7931A]/60" />
+                <svg width="5" height="8" viewBox="0 0 5 8" fill="rgba(247,147,26,0.55)">
+                  <path d="M0 0 L5 4 L0 8" />
+                </svg>
+              </div>
             </div>
 
             {/* c12d group */}
             <div className="flex flex-col items-center gap-2">
               <div
-                className="flex items-center gap-0 px-3 pt-3 pb-2 rounded-xl border"
+                className="relative flex items-center gap-1 px-4 pt-5 pb-4 rounded-xl border backdrop-blur-md overflow-hidden"
                 style={{
-                  backgroundColor: "rgba(247,147,26,0.06)",
-                  borderColor: "rgba(247,147,26,0.25)",
+                  backgroundColor: "rgba(247,147,26,0.05)",
+                  borderColor: "rgba(247,147,26,0.22)",
+                  boxShadow: "0 0 28px rgba(247,147,26,0.1)",
                 }}
               >
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F7931A]/40 to-transparent" />
                 {steps.slice(4).map((step, i) => (
                   <div key={step.label} className="flex items-center">
-                    <div className="flex flex-col items-center gap-1.5 w-20">
+                    <div className="flex flex-col items-center gap-2 w-[72px]">
                       <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-xl border"
+                        className="w-11 h-11 rounded-xl flex items-center justify-center text-lg border"
                         style={{
-                          backgroundColor: "rgba(247,147,26,0.1)",
-                          borderColor: "rgba(247,147,26,0.5)",
-                          boxShadow: "0 0 14px rgba(247,147,26,0.2)",
+                          backgroundColor: "rgba(247,147,26,0.09)",
+                          borderColor: "rgba(247,147,26,0.35)",
+                          boxShadow: "0 0 12px rgba(247,147,26,0.18), inset 0 1px 0 rgba(247,147,26,0.12)",
                         }}
                       >
                         {step.icon}
                       </div>
-                      <span className="text-white/90 text-[10px] font-semibold leading-tight">{step.label}</span>
-                      <span className="text-white/40 text-[9px] leading-tight">{step.desc}</span>
+                      <span className="bg-[#F7931A]/15 border border-[#F7931A]/25 text-[#F7931A]/80 font-mono text-[9px] px-1.5 py-0.5 rounded tracking-wide text-center leading-tight">
+                        {step.label}
+                      </span>
+                      <span className="text-white/35 text-[8px] leading-tight text-center">{step.desc}</span>
                     </div>
                     {i < 1 && (
-                      <div className="flex flex-col items-center mx-1 mb-6">
-                        <div className="w-5 h-px bg-[#F7931A]/30" />
-                        <span className="text-[#F7931A]/30 text-[8px] mt-0.5">▶</span>
+                      <div className="flex flex-col items-center mx-1 pb-7">
+                        <div className="w-4 h-px bg-[#F7931A]/25" />
+                        <svg width="4" height="7" viewBox="0 0 5 8" className="mt-0.5" fill="rgba(247,147,26,0.3)">
+                          <path d="M0 0 L5 4 L0 8" />
+                        </svg>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
-              <span className="text-[#F7931A]/60 text-[10px] font-mono tracking-wide">c12d</span>
+              <span className="text-[#F7931A]/50 text-[9px] font-mono tracking-widest uppercase">c12d</span>
             </div>
 
           </div>
+          <div className="pb-4" />
         </div>
 
         {/* CTA */}
