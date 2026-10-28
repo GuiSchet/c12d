@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
-import { BitcoinWebSocketManager, WsStatus, EbpfMessage, ConnectionEvent, PeerInfo, MempoolInfo, OrphanTx, LogEntry } from "@/lib/bitcoinWebSocket";
+import { BitcoinWebSocketManager, WsStatus, EbpfMessage, ConnectionEvent, PeerInfo, MempoolInfo, OrphanTx, LogEntry, DEFAULT_SUBSCRIPTIONS } from "@/lib/bitcoinWebSocket";
 import { RollingBuffer } from "@/lib/bitcoinDataBuffer";
 
 // ── sessionStorage cache ────────────────────────────────────────────────────
@@ -81,9 +81,11 @@ const NET_COLORS = { ipv4: "#F7931A", ipv6: "#4A9EFF", onion: "#9B59B6", i2p: "#
 
 interface BitcoinDataContextType {
   data: BitcoinDataState;
+  /** Toggle the high-volume debug.log stream subscription. */
+  setLogStreaming: (enabled: boolean) => void;
 }
 
-const BitcoinDataContext = createContext<BitcoinDataContextType>({ data: DEFAULT_STATE });
+const BitcoinDataContext = createContext<BitcoinDataContextType>({ data: DEFAULT_STATE, setLogStreaming: () => {} });
 
 // ── Provider ───────────────────────────────────────────────────────────────
 
@@ -376,10 +378,10 @@ export function BitcoinDataProvider({ children, wsUrl }: { children: React.React
     });
 
     // ── Log events ────────────────────────────────────────────────────────
+    // High volume: no flush per event, the 1s ticker below flushes state.
     mgr.on('LogEvent', ev => {
       if (ev.type !== 'LogEvent') return;
       logBuf.current.push(ev.data as LogEntry);
-      flushState();
     });
 
     // ── Ticker: msg rate every second ────────────────────────────────────
@@ -404,15 +406,23 @@ export function BitcoinDataProvider({ children, wsUrl }: { children: React.React
     };
   }, [wsUrl, flushState, loadCacheFromStorage]);
 
+  const setLogStreaming = useCallback((enabled: boolean) => {
+    managerRef.current?.setSubscriptions({ ...DEFAULT_SUBSCRIPTIONS, log: enabled });
+  }, []);
+
   return (
-    <BitcoinDataContext.Provider value={{ data }}>
+    <BitcoinDataContext.Provider value={{ data, setLogStreaming }}>
       {children}
     </BitcoinDataContext.Provider>
   );
 }
 
-// ── Hook ───────────────────────────────────────────────────────────────────
+// ── Hooks ──────────────────────────────────────────────────────────────────
 
 export function useBitcoinData(): BitcoinDataState {
   return useContext(BitcoinDataContext).data;
+}
+
+export function useLogStreaming(): (enabled: boolean) => void {
+  return useContext(BitcoinDataContext).setLogStreaming;
 }

@@ -114,6 +114,30 @@ type EventHandler = (event: BitcoinEvent) => void;
 
 export type WsStatus = 'connecting' | 'connected' | 'disconnected';
 
+/**
+ * Subscription message the peer-observer websocket expects after opening.
+ * The server sends nothing until it receives one (see websocket-picker.js).
+ */
+export interface Subscriptions {
+  ebpf: {
+    messages: boolean;
+    mempool: boolean;
+    validation: boolean;
+    connections: boolean;
+  };
+  p2p: boolean;
+  log: boolean;
+  rpc: boolean;
+}
+
+// The log stream is very high volume (~1k events/s), so it is opt-in.
+export const DEFAULT_SUBSCRIPTIONS: Subscriptions = {
+  ebpf: { messages: true, mempool: true, validation: false, connections: true },
+  p2p: false,
+  log: false,
+  rpc: true,
+};
+
 export class BitcoinWebSocketManager {
   private ws: WebSocket | null = null;
   private handlers: Map<string, EventHandler[]> = new Map();
@@ -121,6 +145,7 @@ export class BitcoinWebSocketManager {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private shouldReconnect = true;
   private url: string = '';
+  private subscriptions: Subscriptions = DEFAULT_SUBSCRIPTIONS;
 
   connect(url: string): void {
     this.url = url;
@@ -139,6 +164,7 @@ export class BitcoinWebSocketManager {
     }
 
     this.ws.onopen = () => {
+      this._sendSubscriptions();
       if (this.statusHandler) this.statusHandler('connected');
     };
 
@@ -159,6 +185,18 @@ export class BitcoinWebSocketManager {
         // ignore malformed JSON
       }
     };
+  }
+
+  private _sendSubscriptions(): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(this.subscriptions));
+    }
+  }
+
+  /** Update subscriptions; applied immediately if open, otherwise on next connect. */
+  setSubscriptions(subscriptions: Subscriptions): void {
+    this.subscriptions = subscriptions;
+    this._sendSubscriptions();
   }
 
   private _scheduleReconnect(): void {
@@ -191,14 +229,22 @@ export class BitcoinWebSocketManager {
         this._emit({ type: 'RpcOrphanTxs', data: (ot.orphans ?? []) as OrphanTx[] });
       }
     } else if (event.LogExtractor) {
-      // LogExtractor events: extract the log_event string if available
+      // LogExtractor events: log_event is { <Kind>: { raw_message, ... } }
       const logExt = event.LogExtractor as Record<string, unknown>;
-      const raw: string =
-        typeof logExt.log_event === 'string'
-          ? logExt.log_event
-          : JSON.stringify(logExt);
+      const logEvent = logExt.log_event;
+      let message: string | undefined;
+      if (typeof logEvent === 'string') {
+        message = logEvent;
+      } else if (logEvent && typeof logEvent === 'object') {
+        const inner = Object.values(logEvent)[0] as Record<string, unknown> | undefined;
+        if (typeof inner?.raw_message === 'string') message = inner.raw_message;
+      }
+      const thread = typeof logExt.threadname === 'string' ? `[${logExt.threadname}] ` : '';
+      const raw = message !== undefined ? `${thread}${message}` : JSON.stringify(logExt);
+      // log_timestamp is in microseconds
+      const ts = typeof logExt.log_timestamp === 'number' ? new Date(logExt.log_timestamp / 1000) : new Date();
       const logEntry: LogEntry = {
-        timestamp: new Date(),
+        timestamp: ts,
         raw,
       };
       this._emit({ type: 'LogEvent', data: logEntry });
