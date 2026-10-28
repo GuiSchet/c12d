@@ -10,7 +10,7 @@ import { AlertBadge } from "@/components/AlertBadge";
 import { AlertToast } from "@/components/AlertToast";
 import { AlertPanel } from "@/components/AlertPanel";
 import { useChartContext } from "@/components/ChartContextProvider";
-import { useBitcoinData } from "@/contexts/BitcoinDataContext";
+import { useBitcoinData, useLogStreaming } from "@/contexts/BitcoinDataContext";
 import { useChatContext } from "@/contexts/ChatContext";
 import { METRIC_LABELS, OPERATOR_LABELS } from "@/lib/alertEngine";
 import { TopicId } from "@/types/charts";
@@ -46,6 +46,13 @@ function LeftPanel({ onAlertClick }: { onAlertClick: () => void }) {
   };
 
   const isLogsChart = context.selectedChart?.id === "logs-viewer";
+  const setLogStreaming = useLogStreaming();
+
+  // Only subscribe to the debug.log stream while the log viewer is open
+  const logsVisible = view === "chart" && isLogsChart;
+  useEffect(() => {
+    setLogStreaming(logsVisible);
+  }, [logsVisible, setLogStreaming]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden px-4 py-4">
