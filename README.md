@@ -219,6 +219,6 @@ See the full [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgements
+## 🙏 Acknowledgements 
 
 - [**peer-observer**](https://github.com/peer-observer/peer-observer) — for the incredible Bitcoin Core instrumentation that makes this project possible.
